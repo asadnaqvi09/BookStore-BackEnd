@@ -1,7 +1,6 @@
 const Book = require("../models/bookModel");
-const cloudinary = require("../utilis/cloudinary"); // 👈 cloudinary config ka import
+const cloudinary = require("../utilis/cloudinary");
 
-// ✅ Get All Books
 const getAllBooks = async (req, res) => {
   try {
     const { page = 1, limit = 8 } = req.query;
@@ -24,7 +23,6 @@ const getAllBooks = async (req, res) => {
   }
 };
 
-// ✅ Add Book
 const addBook = async (req, res) => {
   try {
     const {
@@ -45,8 +43,7 @@ const addBook = async (req, res) => {
       isBestSeller,
       isOnSale,
     } = req.body;
-
-    // roman urdu: basic required field check
+    
     if (
       !title ||
       !author ||
@@ -65,13 +62,11 @@ const addBook = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // roman urdu: duplicate book check
     let book = await Book.findOne({ title, isbn });
     if (book) {
       return res.status(400).json({ message: "Book already exists" });
     }
 
-    // roman urdu: discount ka logic
     if (isOnSale && discountPrice >= price) {
       return res
         .status(400)
@@ -83,7 +78,6 @@ const addBook = async (req, res) => {
         .json({ message: "Discount timer must be a future date" });
     }
 
-    // roman urdu: images collect krna (file upload + url dono support)
     let bookImages = [];
     if (req.files && req.files.length > 0) {
       bookImages = req.files.map((file) => file.path);
@@ -92,9 +86,7 @@ const addBook = async (req, res) => {
     if (bookImg) {
       bookUrls = Array.isArray(bookImg) ? bookImg : [bookImg];
     }
-    let bookImage = [...new Set([...bookImages, ...bookUrls])]; // duplicates avoid krna
-
-    // roman urdu: image validations
+    let bookImage = [...new Set([...bookImages, ...bookUrls])];
     if (bookImage.length === 0) {
       return res
         .status(400)
@@ -105,8 +97,6 @@ const addBook = async (req, res) => {
         .status(400)
         .json({ message: "Atmost 4 book images are allowed" });
     }
-
-    // roman urdu: book create krna
     const newBook = new Book({
       title,
       author,
@@ -129,12 +119,11 @@ const addBook = async (req, res) => {
     await newBook.save();
     res.status(201).json({ message: "Book added successfully", book: newBook });
   } catch (error) {
-    console.error("AddBook Error:", error.message); // roman urdu: error log
+    console.error("AddBook Error:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// ✅ Update Book
 const updateBookByID = async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,17 +144,14 @@ const updateBookByID = async (req, res) => {
       discountTimer,
       isBestSeller,
       isOnSale,
-      imageOperations, // replace / append / remove
-      removeImage, // images ko remove krny k liye
+      imageOperations,
+      removeImage,
     } = req.body;
 
-    // roman urdu: book dhundo
     let book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
-
-    // roman urdu: naye images collect kro
     let bookImages = [];
     if (req.files && req.files.length > 0) {
       bookImages = req.files.map((file) => file.path);
@@ -176,14 +162,12 @@ const updateBookByID = async (req, res) => {
     }
     let newBookImage = [...new Set([...bookImages, ...bookUrls])];
 
-    // roman urdu: image operations handle krna
     if (imageOperations === "replace") {
       book.bookImg = newBookImage;
     } else if (imageOperations === "append") {
       book.bookImg = [...new Set([...book.bookImg, ...newBookImage])];
     } else if (imageOperations === "remove" && Array.isArray(removeImage)) {
       book.bookImg = book.bookImg.filter((img) => !removeImage.includes(img));
-      // optional: agar cloudinary use ho rahi to image delete kro
       for (let img of removeImage) {
         try {
           const publicId = img.split("/").pop().split(".")[0];
@@ -194,7 +178,6 @@ const updateBookByID = async (req, res) => {
       }
     }
 
-    // roman urdu: image validations
     if (book.bookImg.length === 0) {
       return res
         .status(400)
@@ -205,8 +188,6 @@ const updateBookByID = async (req, res) => {
         .status(400)
         .json({ message: "Atmost 4 book images are allowed" });
     }
-
-    // roman urdu: fields ko update kro (sirf agar aaye hain)
     if (title) book.title = title;
     if (author) book.author = author;
     if (authorImage) book.authorImage = authorImage;
@@ -223,7 +204,6 @@ const updateBookByID = async (req, res) => {
     if (typeof isBestSeller !== "undefined") book.isBestSeller = isBestSeller;
     if (typeof isOnSale !== "undefined") book.isOnSale = isOnSale;
 
-    // roman urdu: discount ka re-check update pe bhi
     if (book.isOnSale && book.discountPrice >= book.price) {
       return res
         .status(400)
@@ -238,12 +218,10 @@ const updateBookByID = async (req, res) => {
         .status(400)
         .json({ message: "Discount timer must be a future date" });
     }
-
-    // roman urdu: save kro
     await book.save();
     res.json({ message: "Book updated successfully", book });
   } catch (error) {
-    console.error("UpdateBook Error:", error.message); // roman urdu: error log
+    console.error("UpdateBook Error:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };
