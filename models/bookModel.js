@@ -10,10 +10,6 @@ const BookSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    authorImage: {
-      type: String,
-      required: true,
-    },
     isbn: {
       type: String,
       required: true,
@@ -24,7 +20,6 @@ const BookSchema = new mongoose.Schema(
     },
     rating: {
       type: Number,
-      required: true,
       default: 0,
       min: 0,
       max: 5,
@@ -32,6 +27,7 @@ const BookSchema = new mongoose.Schema(
     genre: {
       type: String,
       required: true,
+      enum: ["Fiction", "Non-Fiction", "Science", "History", "Biography"],
     },
     stock: {
       type: Number,
@@ -62,10 +58,6 @@ const BookSchema = new mongoose.Schema(
     discountPrice: {
       type: Number,
       default: 0,
-    },
-    discountTimer: {
-      type: Date,
-      default: null,
     },
     isBestSeller: {
       type: Boolean,

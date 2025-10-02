@@ -4,8 +4,10 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
-const authRoutes = require('./routes/authRoutes')
-const bookRoutes = require('./routes/bookRoutes')
+const authRoutes = require('./routes/authRoutes');
+const bookRoutes = require('./routes/bookRoutes');
+const cartRoutes = require('./routes/cartRoutes');
+const wishListRoutes = require('./routes/wishListRoutes');
 const app = express();
 const PORT = process.env.PORT || 4000;
 const connectWithDb = require('./config/db.config');
@@ -25,6 +27,8 @@ connectWithDb();
 
 app.use('/api/user', authRoutes)
 app.use('/api/book', bookRoutes)
+app.use('/api/cart', cartRoutes)
+app.use('/api/wishList', wishListRoutes)
 
 app.use(notFound);
 app.use(errorHandler);

@@ -12,7 +12,7 @@ const connectionWithDB = () => {
     .connect(db_link)
     .then(function(db) {
       console.log("__ DB CONNECTED __");
-    })
+    }) 
     .catch(function(err) {
       console.log(err);
     });

@@ -30,7 +30,6 @@ const addBook = async (req, res) => {
     const {
       title,
       author,
-      authorImage,
       isbn,
       price,
       rating,
@@ -41,7 +40,6 @@ const addBook = async (req, res) => {
       publisher,
       year,
       discountPrice,
-      discountTimer,
       isBestSeller,
       isOnSale,
     } = req.body;
@@ -50,7 +48,6 @@ const addBook = async (req, res) => {
     if (
       !title ||
       !author ||
-      !authorImage ||
       !isbn ||
       !price ||
       !rating ||
@@ -76,11 +73,6 @@ const addBook = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Discount price must be less than price" });
-    }
-    if (isOnSale && discountTimer && new Date(discountTimer) <= new Date()) {
-      return res
-        .status(400)
-        .json({ message: "Discount timer must be a future date" });
     }
 
     // roman urdu: images collect krna (file upload + url dono support)
@@ -110,7 +102,6 @@ const addBook = async (req, res) => {
     const newBook = new Book({
       title,
       author,
-      authorImage,
       isbn,
       price,
       rating,
@@ -120,7 +111,6 @@ const addBook = async (req, res) => {
       publisher,
       year,
       discountPrice,
-      discountTimer,
       isBestSeller,
       isOnSale,
       bookImg: bookImage,
@@ -141,7 +131,6 @@ const updateBookByID = async (req, res) => {
     const {
       title,
       author,
-      authorImage,
       isbn,
       price,
       rating,
@@ -152,7 +141,6 @@ const updateBookByID = async (req, res) => {
       publisher,
       year,
       discountPrice,
-      discountTimer,
       isBestSeller,
       isOnSale,
       imageOperations, // replace / append / remove
@@ -209,7 +197,6 @@ const updateBookByID = async (req, res) => {
     // roman urdu: fields ko update kro (sirf agar aaye hain)
     if (title) book.title = title;
     if (author) book.author = author;
-    if (authorImage) book.authorImage = authorImage;
     if (isbn) book.isbn = isbn;
     if (price) book.price = price;
     if (rating) book.rating = rating;
@@ -219,7 +206,6 @@ const updateBookByID = async (req, res) => {
     if (publisher) book.publisher = publisher;
     if (year) book.year = year;
     if (discountPrice !== undefined) book.discountPrice = discountPrice;
-    if (discountTimer !== undefined) book.discountTimer = discountTimer;
     if (typeof isBestSeller !== "undefined") book.isBestSeller = isBestSeller;
     if (typeof isOnSale !== "undefined") book.isOnSale = isOnSale;
 
@@ -228,15 +214,6 @@ const updateBookByID = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Discount price must be less than price" });
-    }
-    if (
-      book.isOnSale &&
-      book.discountTimer &&
-      new Date(book.discountTimer) <= new Date()
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Discount timer must be a future date" });
     }
 
     // roman urdu: save kro
@@ -286,4 +263,72 @@ const getSingleBookByID = async (req,res)=>{
     res.status(500).json({ message: "Internal server error" });
   }
 }
-module.exports = { getAllBooks, addBook, updateBookByID, deleteBookByID, getSingleBookByID };
+
+const searchFilterBooks = async (req, res) => {
+  try {
+    const {
+      query,
+      genre,
+      minPrice,
+      maxPrice,
+      sortBy,
+      isBestSeller,
+      isOnSale,
+      page = 1,
+      limit = 8,
+    } = req.query;
+
+    let filter = {};
+
+    // 🔍 Title / Author / ISBN search
+    if (query) {
+      filter.$or = [
+        { title: { $regex: query, $options: "i" } },
+        { author: { $regex: query, $options: "i" } },
+        { isbn: { $regex: query, $options: "i" } },
+      ];
+    }
+
+    // 📂 Genre (array of strings)
+    if (genre && genre !== "All Categories") {
+      filter.genre = { $in: [new RegExp(genre, "i")] };
+    }
+
+    // 💰 Price range filter
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // 🏆 BestSeller / OnSale flags
+    if (isBestSeller === "true") filter.isBestSeller = true;
+    if (isOnSale === "true") filter.isOnSale = true;
+
+    // 📊 Sorting
+    let sort = {};
+    if (sortBy === "priceLowToHigh") sort.price = 1;
+    else if (sortBy === "priceHighToLow") sort.price = -1;
+    else if (sortBy === "latest") sort.createdAt = -1; // assuming createdAt hai model mein
+
+    // 📑 Pagination
+    const skip = (page - 1) * limit;
+    const totalBooks = await Book.countDocuments(filter);
+    const books = await Book.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.json({
+      message: "Books fetched successfully",
+      books,
+      totalBooks,
+      currentPage: Number(page),
+      totalPages: Math.ceil(totalBooks / limit),
+    });
+  } catch (error) {
+    console.error("Error in fetching Books:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+module.exports = { getAllBooks, addBook, updateBookByID, deleteBookByID, getSingleBookByID, searchFilterBooks };
